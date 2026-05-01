@@ -1,39 +1,58 @@
 # AI Agent Dev Helper
 
-Small LangChain-based coding helper that can read, write, and list files in a restricted workspace.
+LangChain-based development assistant that generates and iterates on code in a restricted workspace using an orchestrated multi-step flow.
 
-## Features
+## What It Does
 
-- Builds an agent with a configurable Gemini model.
-- Uses tool wrappers for filesystem actions.
-- Restricts file access to a configured base directory.
-- Loads runtime configuration from `.env`.
-- Adds structured logging with redaction/truncation support.
+- Uses a Gemini chat model configured from environment variables.
+- Runs a pipeline of specialized agents: planner, builder, tester, fixer, and reviewer.
+- Exposes filesystem tools for reading, writing, and listing files in a safe base directory.
+- Executes `pytest` and retries with automatic fixing when tests fail (up to 3 iterations).
+- Adds centralized logging with truncation and sensitive value redaction.
+
+## Runtime Flow
+
+`main.py` creates the LLM agent with tools, then passes it to `Orchestrator`.
+
+`Orchestrator.run(task)` performs:
+1. Plan generation.
+2. Build/code generation.
+3. Test generation.
+4. Real `pytest` execution with up to 3 fix loops if failures are detected.
+5. Final review and returned state snapshot.
 
 ## Project Structure
 
-- `main.py` - entrypoint that builds and invokes the agent.
-- `agent/builder.py` - agent construction and tool wiring.
-- `config/settings.py` - environment-backed configuration and base path setup.
-- `tools/filesystem.py` - file read/write/list tools exposed to the agent.
-- `tools/utils.py` - path safety validation helpers.
-- `prompts/system.py` - system prompt used by the agent.
-- `core/logging.py` - shared logging configuration and decorators.
+- `main.py` - entrypoint, tool wiring, and default task prompt.
+- `agent/orchestrator.py` - end-to-end workflow coordination.
+- `agent/base.py` - base wrapper for role-specific agent calls.
+- `agent/planner.py` - planning agent prompt and class.
+- `agent/builder.py` - implementation agent prompt and class.
+- `agent/tester.py` - test-writing agent prompt and class.
+- `agent/fixer.py` - failure-fixing agent prompt and class.
+- `agent/reviewer.py` - review agent prompt and class.
+- `agent/state.py` - shared state model for orchestration.
+- `config/settings.py` - `.env` loading and global `GOOGLE_API_KEY` setup.
+- `tools/filesystem.py` - `read_file`, `write_file`, `list_files`, `create_directory` tools.
+- `tools/utils.py` - path safety and sandbox validation helpers.
+- `prompts/system.py` - system behavior rules used by the tool-enabled agent.
+- `core/logging.py` - logger setup and tool-call logging decorator.
 
 ## Requirements
 
 - Python 3.10+
-- A valid Google Generative AI API key
+- Google Generative AI API key
 
 ## Setup
 
 1. Create and activate a virtual environment.
-2. Install dependencies (example):
-   - `pip install langchain langchain-google-genai pydantic-settings`
-3. Create `.env` from `.env.example` and set values:
-   - `api_key`
-   - `app_path`
-   - `model`
+2. Install dependencies:
+   - `pip install -r requirements.txt`
+3. Create `.env` from `.env.example`.
+4. Configure required variables:
+   - `API_KEY`
+   - `APP_PATH`
+   - `MODEL`
    - Optional: `LOG_LEVEL` (`DEBUG`, `INFO`, `WARNING`, `ERROR`)
 
 ## Run
@@ -44,22 +63,20 @@ From the project root:
 
 ## Logging
 
-Logging is configured in `core/logging.py` and is designed to be safer than plain print statements.
+`core/logging.py` configures application-wide logging and tool tracing.
 
-- Uses Python `logging` with timestamp/level/module output.
-- Supports configurable level via `LOG_LEVEL`.
-- Redacts common sensitive keys (`api_key`, `token`, `password`, etc.).
-- Truncates large string payloads to reduce log noise.
-- Logs exceptions with stack traces for easier debugging.
+- Configurable level via `LOG_LEVEL`.
+- Redacts sensitive keys (for example: `api_key`, `token`, `password`).
+- Truncates long string values to reduce noisy logs.
+- Logs tool start/completion and stack traces on failure.
 
 ## Safety Notes
 
-- File tools resolve paths relative to `app_path`.
-- Traversal outside `app_path` is blocked by path validation.
-- `write_file` can overwrite existing files, so use with care.
+- All file operations are resolved relative to `APP_PATH`.
+- Path traversal outside `APP_PATH` is blocked by safety checks.
+- `write_file` overwrites existing files.
+- `create_directory` is available in `tools/filesystem.py` (even if not currently passed in `main.py` tool list).
 
-## Next Improvements
+## Notes
 
-- Add `pyproject.toml` with pinned dependencies and tooling config.
-- Add tests for path safety and tool behavior.
-- Add CI for linting and tests.
+- The default task in `main.py` is currently hardcoded; edit the `prompt` variable to run different goals.
