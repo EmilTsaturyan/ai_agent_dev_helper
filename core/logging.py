@@ -63,8 +63,8 @@ def log_tool(func):
             "Tool call started",
             extra={
                 "tool_name": func.__name__,
-                "args": _sanitize(args),
-                "kwargs": _sanitize(kwargs),
+                "tool_args": _sanitize(args),
+                "tool_kwargs": _sanitize(kwargs),
             },
         )
         try:
