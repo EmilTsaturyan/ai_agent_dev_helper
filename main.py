@@ -20,7 +20,7 @@ def main():
         tools=[read_file, write_file, list_files],
     )
 
-    orchestrator = Orchestrator(agent, list_files)
+    orchestrator = Orchestrator(agent, run_tests)
     prompt = "Create a new fastapi project with a single endpoint that returns Hello World, use layered architecture with DI module, and write tests for it."
 
     try:
